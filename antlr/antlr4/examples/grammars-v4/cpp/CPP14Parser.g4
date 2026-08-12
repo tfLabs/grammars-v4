@@ -760,7 +760,21 @@ initializerClause
     ;
 
 initializerList
-    : initializerClause Ellipsis? (Comma initializerClause Ellipsis?)*
+    : designation? initializerClause Ellipsis? (
+		Comma designation? initializerClause Ellipsis?
+	)*;
+
+designation
+    : designatorList Assign
+    ;
+
+designatorList
+    : designator+
+    ;
+
+designator
+    : LeftBracket constantExpression RightBracket
+    | Dot Identifier
     ;
 
 bracedInitList
