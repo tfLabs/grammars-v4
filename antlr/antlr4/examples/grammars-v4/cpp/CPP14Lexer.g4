@@ -283,6 +283,24 @@ DotStar: '.*';
 
 Ellipsis: '...';
 
+Extention_: '__extension__';
+BuiltinVaArg_: '__builtin_va_arg';
+BuiltinOffsetOf: '__builtin_offsetof';
+M128_: '__m128';
+M128d_: '__m128d';
+M128i_: '__m128i';
+Atomic_: '_Atomic';
+TypeOf: 'typeof';
+TypeOf_: '__typeof__';
+Noreturn_: '_Noreturn';
+Stdcall_: '__stdcall';
+Declspec_: '__declspec';
+Alignas_: '_Alignas';
+Thread_local_: '_Thread_local';
+Asm_: '__asm';
+Attribute_: '__attribute__';
+Inline_: '__inline__';
+
 fragment Hexquad: HEXADECIMALDIGIT HEXADECIMALDIGIT HEXADECIMALDIGIT HEXADECIMALDIGIT;
 
 fragment Universalcharactername: '\\u' Hexquad | '\\U' Hexquad Hexquad;

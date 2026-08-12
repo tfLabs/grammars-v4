@@ -44,6 +44,9 @@ primaryExpression
     : literal+
     | This
     | LeftParen expression RightParen
+    | Extention_? LeftParen compoundStatement RightParen
+    | BuiltinVaArg_ LeftParen unaryExpression Comma simpleTypeSpecifier RightParen
+    | BuiltinOffsetOf LeftParen simpleTypeSpecifier Comma unaryExpression RightParen    
     | idExpression
     | lambdaExpression
     ;
@@ -145,8 +148,8 @@ pseudoDestructorName
 
 unaryExpression
     : postfixExpression
-    | (PlusPlus | MinusMinus | unaryOperator | Sizeof) unaryExpression
-    | Sizeof (LeftParen theTypeId RightParen | Ellipsis LeftParen Identifier RightParen)
+    | (PlusPlus | MinusMinus | unaryOperator | Sizeof) castExpression
+    | Sizeof (LeftParen theTypeId RightParen | Ellipsis LeftParen Identifier RightParen | AndAnd Identifier)
     | Alignof LeftParen theTypeId RightParen
     | noExceptExpression
     | newExpression_
@@ -200,7 +203,7 @@ noExceptExpression
 
 castExpression
     : unaryExpression
-    | LeftParen theTypeId RightParen castExpression
+    | Extention_? LeftParen theTypeId RightParen castExpression
     ;
 
 pointerMemberExpression
@@ -352,7 +355,7 @@ forRangeInitializer
     ;
 
 jumpStatement
-    : (Break | Continue | Return (expression | bracedInitList)? | Goto Identifier) Semi
+    : (Break | Continue | Return (expression | bracedInitList)? | Goto Identifier | Goto unaryExpression) Semi
     ;
 
 declarationStatement
@@ -413,6 +416,7 @@ declSpecifier
     : storageClassSpecifier
     | typeSpecifier
     | functionSpecifier
+    | alignmentspecifier
     | Friend
     | Typedef
     | Constexpr
@@ -434,6 +438,11 @@ functionSpecifier
     : Inline
     | Virtual
     | Explicit
+	| Noreturn_
+	| Inline_
+	| Stdcall_
+    | gccAttributeSpecifier
+    | Declspec_ LeftParen Identifier RightParen
     ;
 
 typedefName
@@ -489,7 +498,20 @@ simpleTypeSpecifier
     | Double
     | Void
     | Auto
+    | M128_
+    | M128d_
+    | M128i_
+    | Extention_ LeftParen (M128_ | M128d_ | M128i_) RightParen
+    | atomicTypeSpecifier
+    | typeOfOperator LeftParen constantExpression RightParen 
     | decltypeSpecifier
+    ;
+
+typeOfOperator
+    : TypeOf | TypeOf_;
+
+atomicTypeSpecifier
+    : Atomic_ LeftParen simpleTypeSpecifier RightParen
     ;
 
 theTypeName
@@ -640,8 +662,25 @@ initDeclarator
     ;
 
 declarator
-    : pointerDeclarator
-    | noPointerDeclarator parametersAndQualifiers trailingReturnType
+	: pointerDeclarator gccDeclaratorExtension*
+	| noPointerDeclarator parametersAndQualifiers trailingReturnType gccDeclaratorExtension*;
+
+gccDeclaratorExtension
+    :   Asm_ LeftParen StringLiteral+ RightParen
+    |   gccAttributeSpecifier
+    ;
+
+gccAttributeSpecifier
+    :   Attribute_ LeftParen LeftParen gccAttributeList RightParen RightParen
+    ;
+
+gccAttributeList
+    :   gccAttribute? (Comma gccAttribute?)*
+    ;
+
+gccAttribute
+    :   ~(Comma | LeftParen | RightParen)
+        (LeftParen expression? RightParen)?
     ;
 
 pointerDeclarator
