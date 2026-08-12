@@ -35,7 +35,7 @@ options {
 /*Basic concepts*/
 
 translationUnit
-    : declarationseq? EOF
+    : declarationSeq? EOF
     ;
 
 /*Expressions*/
@@ -44,8 +44,24 @@ primaryExpression
     : literal+
     | This
     | LeftParen expression RightParen
+    | LeftParen compoundStatement RightParen
     | idExpression
     | lambdaExpression
+    | foldExpression
+    ;
+
+foldExpression
+    : LeftParen castExpression foldOperator Ellipsis RightParen
+    | LeftParen Ellipsis foldOperator castExpression RightParen
+    | LeftParen castExpression foldOperator Ellipsis foldOperator castExpression RightParen
+    ;
+
+foldOperator
+    : Plus | Minus | Star | Div | Mod | Caret | And | Or | Tilde | Assign | Less | Greater
+    | shiftOperator | PlusAssign | MinusAssign | StarAssign | DivAssign | ModAssign
+    | XorAssign | AndAssign | OrAssign | LeftShiftAssign | RightShiftAssign
+    | Equal | NotEqual | LessEqual | GreaterEqual | AndAnd | OrOr
+    | Comma | DotStar | ArrowStar
     ;
 
 idExpression
@@ -95,7 +111,7 @@ captureList
 
 capture
     : simpleCapture
-    | initcapture
+    | initCapture
     ;
 
 simpleCapture
@@ -103,7 +119,7 @@ simpleCapture
     | This
     ;
 
-initcapture
+initCapture
     : And? Identifier initializer
     ;
 
@@ -115,6 +131,7 @@ postfixExpression
     : primaryExpression
     | postfixExpression LeftBracket (expression | bracedInitList) RightBracket
     | postfixExpression LeftParen expressionList? RightParen
+    | postfixExpression LeftParen (theTypeId | expression) (Comma (theTypeId | expression))* RightParen
     | (simpleTypeSpecifier | typeNameSpecifier) (
         LeftParen expressionList? RightParen
         | bracedInitList
@@ -145,12 +162,13 @@ pseudoDestructorName
 
 unaryExpression
     : postfixExpression
-    | (PlusPlus | MinusMinus | unaryOperator | Sizeof) unaryExpression
-    | Sizeof (LeftParen theTypeId RightParen | Ellipsis LeftParen Identifier RightParen)
+    | (PlusPlus | MinusMinus | unaryOperator) (LeftParen theTypeId RightParen)* unaryExpression
+    | Sizeof (unaryExpression | LeftParen theTypeId RightParen | Ellipsis LeftParen Identifier RightParen)
     | Alignof LeftParen theTypeId RightParen
     | noExceptExpression
     | newExpression_
     | deleteExpression
+    | AndAnd Identifier
     ;
 
 unaryOperator
@@ -161,6 +179,8 @@ unaryOperator
     | Tilde
     | Minus
     | Not
+    | Real
+    | Imag
     ;
 
 newExpression_
@@ -199,8 +219,7 @@ noExceptExpression
     ;
 
 castExpression
-    : unaryExpression
-    | LeftParen theTypeId RightParen castExpression
+    : (LeftParen theTypeId RightParen)* unaryExpression
     ;
 
 pointerMemberExpression
@@ -253,7 +272,7 @@ logicalOrExpression
     ;
 
 conditionalExpression
-    : logicalOrExpression (Question expression Colon assignmentExpression)?
+    : logicalOrExpression (Question expression? Colon assignmentExpression)?
     ;
 
 assignmentExpression
@@ -300,7 +319,7 @@ statement
     ;
 
 labeledStatement
-    : attributeSpecifierSeq? (Identifier | Case constantExpression | Default) Colon statement
+    : attributeSpecifierSeq? (Identifier | Case constantExpression (Ellipsis constantExpression)? | Default) Colon statement
     ;
 
 expressionStatement
@@ -316,8 +335,8 @@ statementSeq
     ;
 
 selectionStatement
-    : If LeftParen condition RightParen statement (Else statement)?
-    | Switch LeftParen condition RightParen statement
+    : If Constexpr? LeftParen forInitStatement? condition RightParen statement (Else statement)?
+    | Switch LeftParen forInitStatement? condition RightParen statement
     ;
 
 condition
@@ -352,7 +371,7 @@ forRangeInitializer
     ;
 
 jumpStatement
-    : (Break | Continue | Return (expression | bracedInitList)? | Goto Identifier) Semi
+    : (Break | Continue | Return (expression | bracedInitList)? | Goto Identifier | Goto Star expression) Semi
     ;
 
 declarationStatement
@@ -361,7 +380,7 @@ declarationStatement
 
 /*Declarations*/
 
-declarationseq
+declarationSeq
     : declaration+
     ;
 
@@ -398,7 +417,7 @@ simpleDeclaration
     ;
 
 staticAssertDeclaration
-    : Static_assert LeftParen constantExpression Comma StringLiteral RightParen Semi
+    : Static_assert LeftParen constantExpression (Comma StringLiteral+)? RightParen Semi
     ;
 
 emptyDeclaration_
@@ -416,6 +435,8 @@ declSpecifier
     | Friend
     | Typedef
     | Constexpr
+    | Complex
+    | attributeSpecifier
     ;
 
 declSpecifierSeq
@@ -490,6 +511,10 @@ simpleTypeSpecifier
     | Void
     | Auto
     | decltypeSpecifier
+    | Typeof LeftParen expression RightParen
+    | Typeof LeftParen theTypeId RightParen
+    | Int128
+    | Float128
     ;
 
 theTypeName
@@ -504,7 +529,7 @@ decltypeSpecifier
     ;
 
 elaboratedTypeSpecifier
-    : classKey (
+    : (classKey | Union) (
         attributeSpecifierSeq? nestedNameSpecifier? Identifier
         | simpleTemplateId
         | nestedNameSpecifier Template? simpleTemplateId
@@ -521,18 +546,18 @@ enumSpecifier
     ;
 
 enumHead
-    : enumkey attributeSpecifierSeq? (nestedNameSpecifier? Identifier)? enumbase?
+    : enumKey attributeSpecifierSeq? (nestedNameSpecifier? Identifier)? enumBase?
     ;
 
 opaqueEnumDeclaration
-    : enumkey attributeSpecifierSeq? Identifier enumbase? Semi
+    : enumKey attributeSpecifierSeq? Identifier enumBase? Semi
     ;
 
-enumkey
+enumKey
     : Enum (Class | Struct)?
     ;
 
-enumbase
+enumBase
     : Colon typeSpecifierSeq
     ;
 
@@ -558,7 +583,7 @@ originalNamespaceName
     ;
 
 namespaceDefinition
-    : Inline? Namespace (Identifier | originalNamespaceName)? LeftBrace namespaceBody = declarationseq? RightBrace
+    : Inline? Namespace (Identifier (Doublecolon Inline? Identifier)*)? attributeSpecifierSeq? LeftBrace namespaceBody = declarationSeq? RightBrace
     ;
 
 namespaceAlias
@@ -566,10 +591,10 @@ namespaceAlias
     ;
 
 namespaceAliasDefinition
-    : Namespace Identifier Assign qualifiednamespacespecifier Semi
+    : Namespace Identifier Assign qualifiedNamespaceSpecifier Semi
     ;
 
-qualifiednamespacespecifier
+qualifiedNamespaceSpecifier
     : nestedNameSpecifier? namespaceName
     ;
 
@@ -582,11 +607,11 @@ usingDirective
     ;
 
 asmDefinition
-    : Asm LeftParen StringLiteral RightParen Semi
+    : Asm Volatile? LeftParen balancedTokenSeq? RightParen Semi
     ;
 
 linkageSpecification
-    : Extern StringLiteral (LeftBrace declarationseq? RightBrace | declaration)
+    : Extern StringLiteral (LeftBrace declarationSeq? RightBrace | declaration)
     ;
 
 attributeSpecifierSeq
@@ -595,10 +620,12 @@ attributeSpecifierSeq
 
 attributeSpecifier
     : LeftBracket LeftBracket attributeList? RightBracket RightBracket
-    | alignmentspecifier
+    | alignmentSpecifier
+    | GnuAttribute LeftParen LeftParen balancedTokenSeq? RightParen RightParen
+    | Declspec LeftParen balancedTokenSeq? RightParen
     ;
 
-alignmentspecifier
+alignmentSpecifier
     : Alignas LeftParen (theTypeId | constantExpression) Ellipsis? RightParen
     ;
 
@@ -607,11 +634,22 @@ attributeList
     ;
 
 attribute
-    : (attributeNamespace Doublecolon)? Identifier attributeArgumentClause?
+    : (attributeNamespace Doublecolon)? anyIdentifier attributeArgumentClause?
     ;
 
 attributeNamespace
+    : anyIdentifier
+    ;
+
+anyIdentifier
     : Identifier
+    | Const
+    | Volatile
+    | Inline
+    | Asm
+    | Alignof
+    | Decltype
+    | Typeof
     ;
 
 attributeArgumentClause
@@ -619,10 +657,10 @@ attributeArgumentClause
     ;
 
 balancedTokenSeq
-    : balancedtoken+
+    : balancedToken+
     ;
 
-balancedtoken
+balancedToken
     : LeftParen balancedTokenSeq RightParen
     | LeftBracket balancedTokenSeq RightBracket
     | LeftBrace balancedTokenSeq RightBrace
@@ -640,8 +678,8 @@ initDeclarator
     ;
 
 declarator
-    : pointerDeclarator
-    | noPointerDeclarator parametersAndQualifiers trailingReturnType
+    : pointerDeclarator (Asm LeftParen balancedTokenSeq? RightParen)?
+    | noPointerDeclarator parametersAndQualifiers trailingReturnType (Asm LeftParen balancedTokenSeq? RightParen)?
     ;
 
 pointerDeclarator
@@ -649,7 +687,7 @@ pointerDeclarator
     ;
 
 noPointerDeclarator
-    : declaratorid attributeSpecifierSeq?
+    : declaratorId attributeSpecifierSeq?
     | noPointerDeclarator (
         parametersAndQualifiers
         | LeftBracket constantExpression? RightBracket attributeSpecifierSeq?
@@ -658,7 +696,7 @@ noPointerDeclarator
     ;
 
 parametersAndQualifiers
-    : LeftParen parameterDeclarationClause? RightParen cvqualifierseq? refqualifier? exceptionSpecification? attributeSpecifierSeq?
+    : LeftParen parameterDeclarationClause? RightParen cvQualifierSeq? refQualifier? exceptionSpecification? attributeSpecifierSeq?
     ;
 
 trailingReturnType
@@ -667,24 +705,25 @@ trailingReturnType
 
 pointerOperator
     : (And | AndAnd) attributeSpecifierSeq?
-    | nestedNameSpecifier? Star attributeSpecifierSeq? cvqualifierseq?
+    | nestedNameSpecifier? Star attributeSpecifierSeq? cvQualifierSeq?
     ;
 
-cvqualifierseq
+cvQualifierSeq
     : cvQualifier+
     ;
 
 cvQualifier
     : Const
     | Volatile
+    | Restrict
     ;
 
-refqualifier
+refQualifier
     : And
     | AndAnd
     ;
 
-declaratorid
+declaratorId
     : Ellipsis? idExpression
     ;
 
@@ -703,7 +742,10 @@ pointerAbstractDeclarator
     ;
 
 noPointerAbstractDeclarator
-    : (parametersAndQualifiers | LeftParen pointerAbstractDeclarator RightParen) (
+    : ( parametersAndQualifiers
+      | LeftBracket constantExpression? RightBracket attributeSpecifierSeq?
+      | LeftParen pointerAbstractDeclarator RightParen
+      ) (
         parametersAndQualifiers
         | LeftBracket constantExpression? RightBracket attributeSpecifierSeq?
     )*
@@ -722,6 +764,7 @@ noPointerAbstractPackDeclarator
 
 parameterDeclarationClause
     : parameterDeclarationList (Comma? Ellipsis)?
+    | Ellipsis
     ;
 
 parameterDeclarationList
@@ -759,8 +802,17 @@ initializerClause
     | bracedInitList
     ;
 
+designatedInitializerClause
+    : designator+ Assign initializerClause
+    ;
+
+designator
+    : Dot anyIdentifier
+    | LeftBracket constantExpression RightBracket
+    ;
+
 initializerList
-    : initializerClause Ellipsis? (Comma initializerClause Ellipsis?)*
+    : (initializerClause | designatedInitializerClause) Ellipsis? (Comma (initializerClause | designatedInitializerClause) Ellipsis?)*
     ;
 
 bracedInitList
@@ -797,10 +849,10 @@ classKey
     ;
 
 memberSpecification
-    : (memberdeclaration | accessSpecifier Colon)+
+    : (memberDeclaration | accessSpecifier Colon)+
     ;
 
-memberdeclaration
+memberDeclaration
     : attributeSpecifierSeq? declSpecifierSeq? memberDeclaratorList? Semi
     | functionDefinition
     | usingDeclaration
@@ -898,10 +950,10 @@ memInitializerList
     ;
 
 memInitializer
-    : meminitializerid (LeftParen expressionList? RightParen | bracedInitList)
+    : memInitializerId (LeftParen expressionList? RightParen | bracedInitList)
     ;
 
-meminitializerid
+memInitializerId
     : classOrDeclType
     | Identifier
     ;
@@ -913,16 +965,16 @@ operatorFunctionId
     ;
 
 literalOperatorId
-    : Operator (StringLiteral Identifier | UserDefinedStringLiteral)
+    : Operator (StringLiteral Identifier | UserDefinedLiteral)
     ;
 
 /*Templates*/
 
 templateDeclaration
-    : Template Less templateparameterList Greater declaration
+    : Template Less templateParameterList Greater declaration
     ;
 
-templateparameterList
+templateParameterList
     : templateParameter (Comma templateParameter)*
     ;
 
@@ -932,7 +984,7 @@ templateParameter
     ;
 
 typeParameter
-    : ((Template Less templateparameterList Greater)? Class | Typename_) (
+    : ((Template Less templateParameterList Greater)? Class | Typename_) (
         Ellipsis? Identifier?
         | Identifier? Assign theTypeId
     )
@@ -1002,7 +1054,7 @@ throwExpression
 
 exceptionSpecification
     : dynamicExceptionSpecification
-    | noeExceptSpecification
+    | noExceptSpecification
     ;
 
 dynamicExceptionSpecification
@@ -1013,7 +1065,7 @@ typeIdList
     : theTypeId Ellipsis? (Comma theTypeId Ellipsis?)*
     ;
 
-noeExceptSpecification
+noExceptSpecification
     : Noexcept LeftParen constantExpression RightParen
     | Noexcept
     ;
@@ -1073,3 +1125,4 @@ literal
     | PointerLiteral
     | UserDefinedLiteral
     ;
+

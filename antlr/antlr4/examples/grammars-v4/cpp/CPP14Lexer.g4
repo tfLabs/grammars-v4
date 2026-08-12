@@ -38,9 +38,21 @@ Directive: '#' ~ [\n]* -> channel (HIDDEN);
 
 Alignas: 'alignas';
 
-Alignof: 'alignof';
+GnuAttribute: '__attribute__' | '__attribute' | 'attribute';
+Declspec: '__declspec';
 
-Asm: 'asm';
+GnuExtension: '__extension__' -> skip;
+Typeof: 'typeof' | '__typeof__' | '__typeof';
+Restrict: 'restrict' | '__restrict__' | '__restrict';
+Int128: '__int128' | '__int128_t' | '__uint128_t';
+Float128: '__float128';
+Complex: '__complex__';
+Real: '__real__';
+Imag: '__imag__';
+
+Alignof: 'alignof' | '__alignof__' | '__alignof';
+
+Asm: 'asm' | '__asm__' | '__asm';
 
 Auto: 'auto';
 
@@ -60,7 +72,7 @@ Char32: 'char32_t';
 
 Class: 'class';
 
-Const: 'const';
+Const: 'const' | '__const__';
 
 Constexpr: 'constexpr';
 
@@ -68,7 +80,7 @@ Const_cast: 'const_cast';
 
 Continue: 'continue';
 
-Decltype: 'decltype';
+Decltype: 'decltype' | '__decltype';
 
 Default: 'default';
 
@@ -105,7 +117,7 @@ Goto: 'goto';
 
 If: 'if';
 
-Inline: 'inline';
+Inline: 'inline' | '__inline__';
 
 Int: 'int';
 
@@ -157,7 +169,7 @@ Template: 'template';
 
 This: 'this';
 
-Thread_local: 'thread_local';
+Thread_local: 'thread_local' | '__thread';
 
 Throw: 'throw';
 
@@ -182,7 +194,7 @@ Virtual: 'virtual';
 
 Void: 'void';
 
-Volatile: 'volatile';
+Volatile: 'volatile' | '__volatile__';
 
 Wchar: 'wchar_t';
 
